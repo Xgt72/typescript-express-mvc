@@ -1,17 +1,18 @@
-import HttpException from "../exceptions/HttpException";
 import * as express from "express";
 import Controller from "../interfaces/controller.interface";
 import Post from "./post.interface";
 import postModel from "./posts.model";
 import PostNotFoundException from "../exceptions/PostNotFoundException";
-import validationMiddleware from '../middleware/validation.middleware';
-import CreatePostDto from './post.dto';
+import validationMiddleware from "../middleware/validation.middleware";
+import CreatePostDto from "./post.dto";
+import authMiddleware from "../middleware/auth.middleware";
+import RequestWithUser from "../interfaces/requestWithUser.interface";
 
 class PostsController implements Controller {
   public path = "/posts";
   public router = express.Router();
-
   private post = postModel;
+
   constructor() {
     this.initializeRoutes();
   }
@@ -19,9 +20,15 @@ class PostsController implements Controller {
   public initializeRoutes() {
     this.router.get(this.path, this.getAllPosts);
     this.router.get(`${this.path}/:id`, this.getPostById);
-    this.router.post(this.path, validationMiddleware(CreatePostDto), this.createPost);
-    this.router.patch(`${this.path}/:id`, validationMiddleware(CreatePostDto, true), this.modifyPost);
-    this.router.delete(`${this.path}/:id`, this.deletePost);
+    this.router
+      .all(`${this.path}/*`, authMiddleware)
+      .patch(
+        `${this.path}/:id`,
+        validationMiddleware(CreatePostDto, true),
+        this.modifyPost
+      )
+      .delete(`${this.path}/:id`, this.deletePost)
+      .post(this.path, validationMiddleware(CreatePostDto), this.createPost);
   }
 
   private getAllPosts = (
@@ -53,15 +60,17 @@ class PostsController implements Controller {
       });
   };
 
-  private createPost = (
-    request: express.Request,
+  private createPost = async (
+    request: RequestWithUser,
     response: express.Response
   ) => {
     const postData: Post = request.body;
-    const createdPost = new this.post(postData);
-    createdPost.save().then((savedPost) => {
-      response.status(201).json(savedPost);
+    const createdPost = new this.post({
+      ...postData,
+      authorId: request.user._id,
     });
+    const savedPost = await createdPost.save();
+    response.status(201).json(savedPost);
   };
 
   private modifyPost = (

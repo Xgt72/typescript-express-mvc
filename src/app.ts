@@ -1,3 +1,4 @@
+import * as cookieParser from "cookie-parser";
 import * as express from "express";
 import * as mongoose from "mongoose";
 import Controller from "./interfaces/controller.interface";
@@ -26,6 +27,7 @@ class App {
   private initializeMiddlewares() {
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
+    this.app.use(cookieParser());
   }
 
   private initializeErrorHandling() {
