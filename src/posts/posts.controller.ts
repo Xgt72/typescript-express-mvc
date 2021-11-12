@@ -1,34 +1,96 @@
+import HttpException from "../exceptions/HttpException";
 import * as express from "express";
+import Controller from "../interfaces/controller.interface";
 import Post from "./post.interface";
+import postModel from "./posts.model";
+import PostNotFoundException from "../exceptions/PostNotFoundException";
 
-class PostsController {
+class PostsController implements Controller {
   public path = "/posts";
   public router = express.Router();
 
-  private posts: Post[] = [
-    {
-      author: "Xavier",
-      content: "Doloe sit amet",
-      title: "Lorem Ipsum",
-    },
-  ];
+  private post = postModel;
   constructor() {
     this.initializeRoutes();
   }
 
   public initializeRoutes() {
     this.router.get(this.path, this.getAllPosts);
-    this.router.post(this.path, this.createAPost);
+    this.router.get(`${this.path}/:id`, this.getPostById);
+    this.router.post(this.path, this.createPost);
+    this.router.put(`${this.path}/:id`, this.modifyPost);
+    this.router.delete(`${this.path}/:id`, this.deletePost);
   }
 
-  getAllPosts = (request: express.Request, response: express.Response) => {
-    response.send(this.posts);
+  private getAllPosts = (
+    request: express.Request,
+    response: express.Response
+  ) => {
+    this.post.find().then((posts) => {
+      response.json(posts);
+    });
   };
 
-  createAPost = (request: express.Request, response: express.Response) => {
-    const post: Post = request.body;
-    this.posts.push(post);
-    response.send(post);
+  private getPostById = (
+    request: express.Request,
+    response: express.Response,
+    next: express.NextFunction
+  ) => {
+    const { id } = request.params;
+    this.post
+      .findById(id)
+      .then((post) => {
+        if (post) {
+          response.json(post);
+        } else {
+          next(new PostNotFoundException(id));
+        }
+      })
+      .catch((err) => {
+        next(new PostNotFoundException(id));
+      });
+  };
+
+  private createPost = (
+    request: express.Request,
+    response: express.Response
+  ) => {
+    const postData: Post = request.body;
+    const createdPost = new this.post(postData);
+    createdPost.save().then((savedPost) => {
+      response.status(201).json(savedPost);
+    });
+  };
+
+  private modifyPost = (
+    request: express.Request,
+    response: express.Response,
+    next: express.NextFunction
+  ) => {
+    const { id } = request.params;
+    const postData: Post = request.body;
+    this.post.findByIdAndUpdate(id, postData, { new: true }).then((post) => {
+      if (post) {
+        response.json(post);
+      } else {
+        next(new PostNotFoundException(id));
+      }
+    });
+  };
+
+  private deletePost = (
+    request: express.Request,
+    response: express.Response,
+    next: express.NextFunction
+  ) => {
+    const { id } = request.params;
+    this.post.findByIdAndDelete(id).then((successResponse) => {
+      if (successResponse) {
+        response.sendStatus(204);
+      } else {
+        next(new PostNotFoundException(id));
+      }
+    });
   };
 }
 
