@@ -17,18 +17,22 @@ class PostsController implements Controller {
     this.initializeRoutes();
   }
 
-  public initializeRoutes() {
+  private initializeRoutes() {
     this.router.get(this.path, this.getAllPosts);
     this.router.get(`${this.path}/:id`, this.getPostById);
-    this.router
-      .all(`${this.path}/*`, authMiddleware)
-      .patch(
-        `${this.path}/:id`,
-        validationMiddleware(CreatePostDto, true),
-        this.modifyPost
-      )
-      .delete(`${this.path}/:id`, this.deletePost)
-      .post(this.path, validationMiddleware(CreatePostDto), this.createPost);
+    this.router.patch(
+      `${this.path}/:id`,
+      authMiddleware,
+      validationMiddleware(CreatePostDto, true),
+      this.modifyPost
+    );
+    this.router.delete(`${this.path}/:id`, authMiddleware, this.deletePost);
+    this.router.post(
+      `${this.path}`,
+      authMiddleware,
+      validationMiddleware(CreatePostDto),
+      this.createPost
+    );
   }
 
   private getAllPosts = (
@@ -64,6 +68,7 @@ class PostsController implements Controller {
     request: RequestWithUser,
     response: express.Response
   ) => {
+    console.log(request.user);
     const postData: Post = request.body;
     const createdPost = new this.post({
       ...postData,

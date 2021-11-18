@@ -11,8 +11,11 @@ async function authMiddleware(
   response: Response,
   next: NextFunction
 ) {
+  console.log("I'm in the auth middleware");
+  console.log(request.cookies);
   const cookies = request.cookies;
   if (cookies && cookies.Authorization) {
+    console.log("I'm in the auth middleware, cookie");
     const secret = process.env.JWT_SECRET;
     try {
       const verificationResponse = jwt.verify(
@@ -22,6 +25,7 @@ async function authMiddleware(
       const id = verificationResponse._id;
       const user = await userModel.findById(id);
       if (user) {
+        console.log(Object.keys(user._id));
         request.user = user;
         next();
       } else {
@@ -31,6 +35,7 @@ async function authMiddleware(
       next(new WrongAuthenticationTokenException());
     }
   } else {
+    console.log("I'm in the auth middleware, no cookie");
     next(new AuthenticationTokenMissingException());
   }
 }
